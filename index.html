@@ -8,7 +8,8 @@
     <meta name="theme-color" content="#3498db">
     
     <title>车辆信息报告 | Авто отчёт</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF для работы с изображениями -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -68,69 +69,9 @@
         .progress-text { font-size: 13px; color: #27ae60; font-weight: 600; margin-top: 8px; text-align: center; }
         .debug-info { font-size: 11px; color: #95a5a6; margin-top: 5px; text-align: center; white-space: pre-line; }
         
-        /* === Стили для отчёта (PDF) === */
-        #report-content { 
-            display: none; background: white; padding: 20px; font-family: sans-serif; 
-            width: 100%; max-width: 800px; margin: 0 auto; border: 2px solid #3498db;
-        }
-        #report-content.visible { display: block; }
-        
-        .report-header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; }
-        .report-header h1 { margin: 8px 0; color: #2c3e50; font-size: 22px; }
-        .report-title-cn { font-size: 16px; color: #2c3e50; margin: 0; font-weight: bold; }
-        .report-title-ru { font-size: 13px; color: #7f8c8d; margin: 4px 0 0 0; }
-        .report-header .meta { color: #7f8c8d; font-size: 12px; margin-top: 8px; }
-        
-        .specs-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
-        .specs-table tr { border-bottom: 1px solid #eee; }
-        .specs-table tr:last-child { border-bottom: none; }
-        .specs-table td { padding: 10px 8px; vertical-align: top; }
-        .specs-label { width: 45%; font-weight: 600; color: #2c3e50; border-right: 2px solid #f1f1f1; }
-        .specs-label-cn { display: block; font-size: 14px; }
-        .specs-label-ru { display: block; font-size: 11px; color: #7f8c8d; margin-top: 2px; text-transform: uppercase; }
-        .specs-value { width: 55%; padding-left: 12px; color: #333; font-size: 14px; }
-        .specs-value-cn { font-weight: 500; display: block; }
-        .specs-value-ru { font-size: 11px; color: #7f8c8d; display: block; margin-top: 2px; }
-        
-        #r-images { display: flex; flex-wrap: wrap; margin: 15px 0; gap: 8px; }
-        #r-images img { 
-            width: 32%; 
-            height: auto; 
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
-            display: block; 
-            background: #fff;
-            min-height: 100px;
-        }
-        
-        .report-desc { margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; border-radius: 0 4px 4px 0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
-        .desc-label { font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block; }
-        .desc-label-ru { font-weight: normal; color: #7f8c8d; font-size: 12px; }
-        
-        .report-footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; color: #95a5a6; font-size: 11px; line-height: 1.6; }
-        
-        /* Сообщение для пользователя */
-        #report-notice {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 1000;
-            text-align: center;
-            max-width: 90%;
-        }
-        
         @media (max-width: 500px) {
             .row { flex-direction: column; gap: 0; }
-            #r-images img { width: 48%; }
             body { padding: 10px; }
-            .specs-label, .specs-value { width: 100%; border-right: none !important; }
-            .specs-value { padding-left: 0; padding-top: 5px; border-top: 1px dashed #eee; }
         }
     </style>
 </head>
@@ -231,63 +172,6 @@
     <div id="loading">⏳ 生成中... | Идёт генерация, подождите...</div>
 </div>
 
-<!-- === ШАБЛОН ОТЧЕТА === -->
-<div id="report-content">
-    <div class="report-header">
-        <p class="report-title-cn">车辆信息报告</p>
-        <p class="report-title-ru">Отчёт по автомобилю</p>
-        <h1 id="r-model"></h1>
-        <div class="meta">
-            📅 <span id="r-date"></span> &nbsp;|&nbsp; 🔢 <span id="r-id"></span>
-        </div>
-    </div>
-
-    <table class="specs-table">
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">年份</span><span class="specs-label-ru">Год выпуска</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-year"></span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">马力</span><span class="specs-label-ru">Лошадиные силы</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-horsepower"></span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">里程</span><span class="specs-label-ru">Пробег</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-mileage"></span><span class="specs-value-ru">км</span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">价格</span><span class="specs-label-ru">Цена</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-price"></span><span class="specs-value-ru">юаней (CNY)</span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">联系方式</span><span class="specs-label-ru">Контакты продавца</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-contact"></span></td>
-        </tr>
-    </table>
-
-    <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label"><span class="specs-label-cn">配置描述</span><span class="specs-label-ru">Описание / Комплектация</span></span>
-    </div>
-    <div class="report-desc" id="r-desc"></div>
-
-    <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label"><span class="specs-label-cn">车辆照片</span><span class="specs-label-ru">Фотографии автомобиля</span></span>
-    </div>
-    <div id="r-images"></div>
-
-    <div class="report-footer">
-        <p>报告由 «Турбо ДВ» 系统自动生成</p>
-        <p style="margin:3px 0">Отчёт сгенерирован автоматически | 🇷🇺 Россия · Дальний Восток · Авто из Китая</p>
-    </div>
-</div>
-
-<!-- Уведомление для пользователя -->
-<div id="report-notice">
-    <h3 style="margin:0 0 10px 0;">📋 Отчёт показан на экране</h3>
-    <p style="margin:0 0 15px 0; font-size:14px;">Проверьте что все фото загрузились.<br>PDF начнёт скачиваться через 3 секунды...</p>
-    <div id="countdown" style="font-size:24px; font-weight:bold;">3</div>
-</div>
-
 <script>
     let uploadedImages = [];
 
@@ -308,7 +192,7 @@
         }
         
         if (files.length > 5) {
-            showError('⚠️ 最多 5 张照片 | Максимум 5 фото (для мобильного)');
+            showError('⚠️ 最多 5 张照片 | Максимум 5 фото');
             document.getElementById('photos').value = '';
             return;
         }
@@ -327,8 +211,7 @@
             }
             
             try {
-                // Сильное сжатие для мобильных
-                const base64 = await compressAndReadFile(file, 600, 0.6);
+                const base64 = await compressAndReadFile(file, 800, 0.75);
                 uploadedImages.push(base64);
                 
                 const img = document.createElement('img');
@@ -336,28 +219,23 @@
                 img.className = 'preview-img';
                 preview.appendChild(img);
                 
-                debugInfo.textContent += `Фото ${i+1}: ${(base64.length * 0.75 / 1024).toFixed(0)} КБ\n`;
+                debugInfo.textContent += `✓ Фото ${i+1}: ${(base64.length * 0.75 / 1024).toFixed(0)} КБ\n`;
                 
             } catch (err) {
-                console.error('Ошибка загрузки:', err);
+                console.error('Ошибка:', err);
                 showError(`❌ Ошибка фото ${i+1}: ${err.message}`);
             }
         }
         
         const totalSize = uploadedImages.reduce((acc, img) => acc + (img.length * 0.75), 0);
-        progressText.textContent = `✅ Загружено фото: ${uploadedImages.length}`;
-        debugInfo.textContent += `\n📦 Общий размер: ${(totalSize/1024/1024).toFixed(2)} МБ`;
-        
-        if (uploadedImages.length === 0) {
-            preview.innerHTML = '<div style="color:#e74c3c;font-size:13px;padding:10px;">Не удалось загрузить ни одного фото</div>';
-        }
+        progressText.textContent = `✅ Загружено: ${uploadedImages.length} фото`;
+        debugInfo.textContent += `\n📦 Всего: ${(totalSize/1024/1024).toFixed(2)} МБ`;
     }
 
     // Сжатие
-    function compressAndReadFile(file, maxSize = 600, quality = 0.6) {
+    function compressAndReadFile(file, maxSize = 800, quality = 0.75) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
@@ -385,18 +263,12 @@
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    try {
-                        const result = canvas.toDataURL('image/jpeg', quality);
-                        resolve(result);
-                    } catch (err) {
-                        reject(new Error('Не удалось сжать изображение'));
-                    }
+                    resolve(canvas.toDataURL('image/jpeg', quality));
                 };
-                img.onerror = () => reject(new Error('Не удалось обработать изображение'));
+                img.onerror = () => reject(new Error('Не удалось обработать'));
                 img.src = e.target.result;
             };
-            
-            reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+            reader.onerror = () => reject(new Error('Не удалось прочитать'));
             reader.readAsDataURL(file);
         });
     }
@@ -405,51 +277,10 @@
         const errorBox = document.getElementById('error-box');
         errorBox.textContent = msg;
         errorBox.style.display = 'block';
-        console.error(msg);
     }
 
-    // === 2. ПОШАГОВАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ С img.decode() ===
-    async function loadImagesToReport(images) {
-        const target = document.getElementById('r-images');
-        target.innerHTML = '';
-        
-        const loadedImages = [];
-        
-        for (let i = 0; i < images.length; i++) {
-            const img = document.createElement('img');
-            img.src = images[i];
-            img.style.width = '32%';
-            img.style.display = 'block';
-            
-            // Ждём пока изображение загрузится
-            await new Promise((resolve, reject) => {
-                img.onload = () => {
-                    // Принудительно декодируем изображение
-                    if (img.decode) {
-                        img.decode().then(() => {
-                            loadedImages.push(img);
-                            resolve();
-                        }).catch(reject);
-                    } else {
-                        loadedImages.push(img);
-                        resolve();
-                    }
-                };
-                img.onerror = () => {
-                    console.error('Не удалось загрузить изображение', i);
-                    resolve(); // Продолжаем даже если ошибка
-                };
-            });
-            
-            target.appendChild(img);
-        }
-        
-        return loadedImages;
-    }
-
-    // === 3. ГЕНЕРАЦИЯ PDF ===
+    // === 2. ГЕНЕРАЦИЯ PDF (jsPDF + прямое добавление фото) ===
     async function generatePDF() {
-        // Валидация
         const required = [
             {id: 'model', label: '品牌/型号 | Марка'},
             {id: 'year', label: '年份 | Год'},
@@ -460,7 +291,7 @@
         ];
         for (let f of required) {
             if (!document.getElementById(f.id).value.trim()) {
-                alert('⚠️ Заполните поле: ' + f.label);
+                alert('⚠️ Заполните: ' + f.label);
                 document.getElementById(f.id).focus();
                 return;
             }
@@ -468,102 +299,157 @@
         
         if (uploadedImages.length < 3) {
             alert('⚠️ 请上传至少 3 张照片 | Минимум 3 фото');
-            document.getElementById('photos').scrollIntoView({behavior: 'smooth', block: 'center'});
             return;
         }
 
         const loading = document.getElementById('loading');
         const btn = document.getElementById('btn-generate');
-        const element = document.getElementById('report-content');
         const debugInfo = document.getElementById('debug-info');
-        const notice = document.getElementById('report-notice');
-        const countdown = document.getElementById('countdown');
         
         btn.disabled = true;
         loading.style.display = 'block';
-        loading.textContent = '📄 Шаг 1/4: Подготовка данных...';
+        loading.textContent = '📄 Создание PDF...';
         
         try {
-            // Заполняем данные
-            document.getElementById('r-model').innerText = document.getElementById('model').value;
-            document.getElementById('r-year').innerText = document.getElementById('year').value;
-            document.getElementById('r-horsepower').innerText = document.getElementById('horsepower').value + ' HP';
-            document.getElementById('r-mileage').innerText = document.getElementById('mileage').value;
-            document.getElementById('r-price').innerText = document.getElementById('price').value;
-            document.getElementById('r-contact').innerText = document.getElementById('contact').value;
-            document.getElementById('r-desc').innerText = document.getElementById('desc').value || '—';
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
             
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            const contentWidth = pageWidth - (margin * 2);
+            
+            let y = margin;
+            
+            // Заголовок
+            doc.setFontSize(16);
+            doc.setTextColor(44, 62, 80);
+            doc.text('车辆信息报告 | Отчёт по автомобилю', pageWidth / 2, y, { align: 'center' });
+            y += 8;
+            
+            // Модель
+            doc.setFontSize(14);
+            doc.text(document.getElementById('model').value, pageWidth / 2, y, { align: 'center' });
+            y += 10;
+            
+            // Дата и ID
             const now = new Date();
-            document.getElementById('r-date').innerText = now.toLocaleDateString('ru-RU');
-            document.getElementById('r-id').innerText = 'TDV-' + now.getTime().toString(36).toUpperCase();
+            doc.setFontSize(9);
+            doc.setTextColor(127, 140, 141);
+            doc.text(`📅 ${now.toLocaleDateString('ru-RU')} | 🔢 TDV-${now.getTime().toString(36).toUpperCase()}`, pageWidth / 2, y, { align: 'center' });
+            y += 12;
             
-            // Загружаем фото с decode()
-            loading.textContent = '📄 Шаг 2/4: Загрузка фото...';
-            const loadedImg = await loadImagesToReport(uploadedImages);
-            debugInfo.textContent += `\n✅ Загружено в отчёт: ${loadedImg.length} фото`;
+            // Линия
+            doc.setDrawColor(44, 62, 80);
+            doc.setLineWidth(0.5);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 10;
             
-            // Показываем отчёт на экране
-            loading.textContent = '📄 Шаг 3/4: Показ отчёта...';
-            element.classList.add('visible');
-            element.scrollIntoView({behavior: 'smooth', block: 'start'});
+            // Таблица данных
+            doc.setFontSize(10);
+            doc.setTextColor(44, 62, 80);
             
-            // Показываем уведомление
-            notice.style.display = 'block';
+            const data = [
+                ['年份 | Год', document.getElementById('year').value],
+                ['马力 | Л.с.', document.getElementById('horsepower').value + ' HP'],
+                ['里程 | Пробег', document.getElementById('mileage').value + ' км'],
+                ['价格 | Цена', document.getElementById('price').value + ' ¥'],
+                ['联系方式 | Контакт', document.getElementById('contact').value]
+            ];
             
-            // Обратный отсчёт
-            for (let i = 3; i > 0; i--) {
-                countdown.textContent = i;
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            const rowHeight = 8;
+            data.forEach(row => {
+                doc.text(row[0], margin, y);
+                doc.text(row[1], pageWidth - margin, y, { align: 'right' });
+                y += rowHeight;
+            });
+            
+            y += 5;
+            
+            // Описание
+            doc.setFontSize(11);
+            doc.text('配置描述 | Описание:', margin, y);
+            y += 7;
+            
+            const desc = document.getElementById('desc').value || '—';
+            const descLines = doc.splitTextToSize(desc, contentWidth);
+            descLines.forEach(line => {
+                if (y > pageHeight - 20) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += 5;
+            });
+            
+            y += 10;
+            
+            // === ФОТО (прямое добавление в PDF) ===
+            doc.setFontSize(11);
+            doc.text('车辆照片 | Фото автомобиля:', margin, y);
+            y += 10;
+            
+            const photoWidth = (contentWidth - 10) / 3; // 3 фото в ряд
+            const photoHeight = photoWidth * 0.75;
+            let photoX = margin;
+            let photoY = y;
+            
+            debugInfo.textContent += `\n📷 Добавление ${uploadedImages.length} фото...`;
+            
+            for (let i = 0; i < uploadedImages.length; i++) {
+                if (photoY + photoHeight > pageHeight - 20) {
+                    doc.addPage();
+                    photoY = margin;
+                    photoX = margin;
+                }
+                
+                try {
+                    // Прямо добавляем base64 в PDF
+                    doc.addImage(uploadedImages[i], 'JPEG', photoX, photoY, photoWidth, photoHeight);
+                    debugInfo.textContent += ` ✓`;
+                } catch (err) {
+                    console.error('Ошибка добавления фото:', err);
+                    debugInfo.textContent += ` ✗`;
+                }
+                
+                photoX += photoWidth + 5;
+                if (photoX + photoWidth > pageWidth - margin) {
+                    photoX = margin;
+                    photoY += photoHeight + 5;
+                }
             }
-            notice.style.display = 'none';
             
-            // Финальная пауза
-            loading.textContent = '📄 Шаг 4/4: Генерация PDF...';
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            y = photoY + photoHeight + 15;
             
-            debugInfo.textContent += `\n📊 Размер отчёта: ${element.offsetWidth}x${element.offsetHeight}px`;
+            // Футер
+            if (y > pageHeight - 20) {
+                doc.addPage();
+                y = margin;
+            }
             
-            // Настройки PDF
-            const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-            const opt = {
-                margin: 10,
-                filename: 'car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf',
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { 
-                    scale: isMobile ? 1 : 2,
-                    useCORS: false,
-                    logging: false,
-                    allowTaint: false,
-                    backgroundColor: '#ffffff',
-                    windowWidth: 800,
-                    imageTimeout: 30000,
-                    removeContainer: true
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            doc.setFontSize(8);
+            doc.setTextColor(149, 165, 166);
+            doc.text('报告由 «Турбо ДВ» 系统自动生成', pageWidth / 2, y, { align: 'center' });
+            y += 4;
+            doc.text('Отчёт сгенерирован автоматически | 🇷🇺 Россия · Дальний Восток', pageWidth / 2, y, { align: 'center' });
             
-            debugInfo.textContent += `\n🔧 Scale: ${opt.html2canvas.scale}`;
+            // Сохранение
+            const filename = 'car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf';
+            doc.save(filename);
             
-            // Генерация
-            await html2pdf().set(opt).from(element).save();
-            
-            // Успех
-            element.classList.remove('visible');
             loading.style.display = 'none';
             btn.disabled = false;
             btn.innerText = '📄 生成 PDF 报告 | Скачать отчёт';
-            debugInfo.textContent += '\n✅ PDF успешно создан!';
-            alert('✅ PDF готов!\nФайл скачан.\nОтправьте его нам. Спасибо!');
+            debugInfo.textContent += '\n✅ PDF создан!';
+            alert('✅ PDF готов!\nФото добавлены.\nОтправьте нам!');
             
         } catch (err) {
             console.error('PDF Error:', err);
-            element.classList.remove('visible');
-            notice.style.display = 'none';
             loading.style.display = 'none';
             btn.disabled = false;
             btn.innerText = '📄 生成 PDF 报告 | Скачать отчёт';
-            debugInfo.textContent += '\n❌ Ошибка: ' + err.message;
-            alert('❌ Ошибка: ' + err.message + '\n\nПопробуйте:\n1. Обновить страницу\n2. Меньше фото (3 шт)\n3. Браузер Chrome');
+            debugInfo.textContent += '\n❌ ' + err.message;
+            alert('❌ Ошибка: ' + err.message);
         }
     }
 </script>
