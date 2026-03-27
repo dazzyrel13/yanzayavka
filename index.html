@@ -37,11 +37,9 @@
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
         
-        /* Стили для превью фото */
         #image-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; background: #fafafa; padding: 8px; border-radius: 6px; border: 1px dashed #ddd; }
         .preview-img { width: 80px; height: 80px; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
-        /* Кнопка загрузки */
         .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
         .file-input-btn {
             display: block; width: 100%; padding: 12px; background: #ecf0f1; color: #2c3e50; 
@@ -70,7 +68,10 @@
         .progress-text { font-size: 13px; color: #27ae60; font-weight: 600; margin-top: 8px; text-align: center; }
         
         /* === Стили для отчёта (PDF) === */
-        #report-content { display: none; background: white; padding: 25px; font-family: sans-serif; width: 100%; }
+        #report-content { 
+            display: none; background: white; padding: 20px; font-family: sans-serif; 
+            width: 100%; max-width: 800px; margin: 0 auto;
+        }
         .report-header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; }
         .report-header h1 { margin: 8px 0; color: #2c3e50; font-size: 22px; }
         .report-title-cn { font-size: 16px; color: #2c3e50; margin: 0; font-weight: bold; }
@@ -89,7 +90,7 @@
         .specs-value-ru { font-size: 11px; color: #7f8c8d; display: block; margin-top: 2px; }
         
         #r-images { display: flex; flex-wrap: wrap; margin: 15px 0; gap: 8px; }
-        #r-images img { width: 30%; height: auto; border: 1px solid #eee; border-radius: 4px; display: block; }
+        #r-images img { width: 32%; height: auto; border: 1px solid #ddd; border-radius: 4px; display: block; background: #fff; }
         
         .report-desc { margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; border-radius: 0 4px 4px 0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
         .desc-label { font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block; }
@@ -99,7 +100,7 @@
         
         @media (max-width: 500px) {
             .row { flex-direction: column; gap: 0; }
-            #r-images img { width: 45%; }
+            #r-images img { width: 48%; }
             body { padding: 10px; }
             .specs-label, .specs-value { width: 100%; border-right: none !important; }
             .specs-value { padding-left: 0; padding-top: 5px; border-top: 1px dashed #eee; }
@@ -253,9 +254,9 @@
 </div>
 
 <script>
-    let uploadedImages = []; // Храним base64 строки
+    let uploadedImages = [];
 
-    // === 1. ОБРАБОТКА ФАЙЛОВ ===
+    // === 1. ОБРАБОТКА ФАЙЛОВ (со сжатием) ===
     async function handleFiles(files) {
         const preview = document.getElementById('image-preview');
         const progressText = document.getElementById('progress-text');
@@ -289,7 +290,8 @@
             }
             
             try {
-                const base64 = await readFileAsBase64(file);
+                // Сжимаем фото перед загрузкой
+                const base64 = await compressAndReadFile(file);
                 uploadedImages.push(base64);
                 
                 const img = document.createElement('img');
@@ -309,24 +311,47 @@
         }
     }
 
-    function readFileAsBase64(file) {
+    // Сжатие + чтение файла
+    function compressAndReadFile(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            const timeout = setTimeout(() => {
-                reader.abort();
-                reject(new Error('Превышено время чтения файла'));
-            }, 20000);
             
-            reader.onload = () => {
-                clearTimeout(timeout);
-                resolve(reader.result);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Сжимаем изображение через canvas
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Максимальный размер для мобильных
+                    const maxSize = 1200;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = (height * maxSize) / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = (width * maxSize) / height;
+                            height = maxSize;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Конвертируем в JPEG с качеством 0.8
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.onerror = () => reject(new Error('Не удалось обработать изображение'));
+                img.src = e.target.result;
             };
             
-            reader.onerror = () => {
-                clearTimeout(timeout);
-                reject(new Error('Не удалось прочитать файл'));
-            };
-            
+            reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
             reader.readAsDataURL(file);
         });
     }
@@ -338,24 +363,7 @@
         console.error(msg);
     }
 
-    // === 2. ПРЕДЗАГРУЗКА ИЗОБРАЖЕНИЙ (КРИТИЧНО ДЛЯ PDF) ===
-    function preloadImages(srcArray) {
-        return Promise.all(srcArray.map(src => {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                // Важно для base64
-                img.crossOrigin = 'anonymous';
-                
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('Не удалось загрузить изображение в память'));
-                
-                // Добавляем случайный параметр чтобы избежать кэширования
-                img.src = src + (src.includes('?') ? '&' : '?') + 'load=' + Date.now();
-            });
-        }));
-    }
-
-    // === 3. ГЕНЕРАЦИЯ PDF ===
+    // === 2. ГЕНЕРАЦИЯ PDF (упрощённая) ===
     async function generatePDF() {
         // Валидация
         const required = [
@@ -380,21 +388,16 @@
             return;
         }
 
-        // === КЛЮЧЕВОЙ МОМЕНТ: Предзагрузка перед генерацией ===
         const loading = document.getElementById('loading');
         const btn = document.getElementById('btn-generate');
+        const element = document.getElementById('report-content');
         
         btn.disabled = true;
         loading.style.display = 'block';
-        loading.textContent = '📷 Подготовка фото (1/2)... | Preparing images...';
+        loading.textContent = '📄 Подготовка PDF...';
         
         try {
-            // 1. Ждём пока все картинки загрузятся в память браузера
-            await preloadImages(uploadedImages);
-            
-            // 2. Заполняем данные
-            loading.textContent = '📄 Генерация PDF (2/2)... | Generating PDF...';
-            
+            // Заполняем данные
             document.getElementById('r-model').innerText = document.getElementById('model').value;
             document.getElementById('r-year').innerText = document.getElementById('year').value;
             document.getElementById('r-horsepower').innerText = document.getElementById('horsepower').value + ' HP';
@@ -407,49 +410,44 @@
             document.getElementById('r-date').innerText = now.toLocaleDateString('ru-RU');
             document.getElementById('r-id').innerText = 'TDV-' + now.getTime().toString(36).toUpperCase();
             
-            // 3. Вставляем фото в шаблон
+            // Вставляем фото в шаблон
             const target = document.getElementById('r-images');
             target.innerHTML = '';
+            
             for (let src of uploadedImages) {
                 const img = document.createElement('img');
                 img.src = src;
-                img.style.width = '30%';
+                img.style.width = '32%';
                 img.style.display = 'block';
-                // Важно: ждём загрузки каждого изображения в DOM
-                await new Promise(resolve => {
-                    img.onload = resolve;
-                    img.onerror = resolve; // продолжаем даже если ошибка
-                });
                 target.appendChild(img);
             }
             
-            // 4. Даём браузеру время отрендерить DOM
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Ждём пока браузер отрендерит изображения
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // 5. Показываем шаблон (html2pdf должен видеть элемент)
-            const element = document.getElementById('report-content');
+            // Показываем шаблон
             element.style.display = 'block';
             
-            // Ещё одна пауза для рендеринга
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Ещё пауза для рендеринга
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            // 6. Настройки PDF (оптимизировано для мобильных)
+            // Настройки PDF
             const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
             const opt = {
-                margin: 12,
+                margin: 10,
                 filename: 'car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf',
                 image: { type: 'jpeg', quality: 0.95 },
                 html2canvas: { 
-                    scale: isMobile ? 1.5 : 2,  // Меньше масштаб для мобильных
-                    useCORS: true,
+                    scale: isMobile ? 1 : 2,  // Для мобильных scale=1
+                    useCORS: false,  // Отключаем для base64
                     logging: false,
-                    allowTaint: true,
-                    windowWidth: 800  // Фиксируем ширину для консистентности
+                    allowTaint: false,
+                    backgroundColor: '#ffffff'
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
-            // 7. Генерация
+            // Генерация
             await html2pdf().set(opt).from(element).save();
             
             // Успех
@@ -461,11 +459,11 @@
             
         } catch (err) {
             console.error('PDF Error:', err);
-            document.getElementById('report-content').style.display = 'none';
+            element.style.display = 'none';
             loading.style.display = 'none';
             btn.disabled = false;
             btn.innerText = '📄 生成 PDF 报告 | Скачать отчёт';
-            alert('❌ Ошибка генерации PDF: ' + err.message + '\n\nПопробуйте:\n1. Обновить страницу\n2. Загрузить меньше фото\n3. Использовать другой браузер');
+            alert('❌ Ошибка: ' + err.message + '\n\nПопробуйте:\n1. Обновить страницу\n2. Меньше фото (3-5)\n3. Другой браузер (Chrome)');
         }
     }
 </script>
