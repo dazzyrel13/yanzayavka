@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>车辆信息报告</title>
+    
+    <!-- Библиотеки (должны загрузиться до скрипта) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
@@ -164,6 +166,12 @@
 <script>
     let uploadedImages = [];
 
+    // Проверка загрузки библиотек
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log('jsPDF loaded:', typeof window.jspdf !== 'undefined');
+        console.log('html2canvas loaded:', typeof window.html2canvas !== 'undefined');
+    });
+
     // === БЕЗ СЖАТИЯ — оригинальное качество ===
     async function handleFiles(files) {
         const preview = document.getElementById('image-preview');
@@ -183,7 +191,6 @@
             if (!file.type.startsWith('image/')) continue;
             
             try {
-                // Читаем файл БЕЗ сжатия
                 const base64 = await readFileAsBase64(file);
                 uploadedImages.push(base64);
                 
@@ -205,7 +212,6 @@
         debugInfo.textContent += `\n📦 Total: ${totalMB} MB | Photos: ${uploadedImages.length}\n⚠️ Original quality - large file size!`;
     }
 
-    // Чтение файла без сжатия
     function readFileAsBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -215,7 +221,6 @@
         });
     }
 
-    // Загрузка фото в отчёт
     async function loadImagesToReport() {
         const target = document.getElementById('r-images');
         target.innerHTML = '';
@@ -233,8 +238,17 @@
         }
     }
 
-    // Генерация PDF
     async function generatePDF() {
+        // Проверка библиотек
+        if (typeof window.jspdf === 'undefined') {
+            alert('❌ jsPDF library not loaded! Check internet connection.');
+            return;
+        }
+        if (typeof window.html2canvas === 'undefined') {
+            alert('❌ html2canvas library not loaded! Check internet connection.');
+            return;
+        }
+
         const required = ['model', 'year', 'horsepower', 'mileage', 'price'];
         for (let id of required) {
             if (!document.getElementById(id).value.trim()) {
@@ -259,7 +273,6 @@
         loading.textContent = '📄 Step 1/4: Preparing...';
         
         try {
-            // Заполняем отчёт
             document.getElementById('r-model').textContent = document.getElementById('model').value;
             document.getElementById('r-year').textContent = document.getElementById('year').value;
             document.getElementById('r-horsepower').textContent = document.getElementById('horsepower').value + ' HP';
@@ -270,20 +283,16 @@
             const now = new Date();
             document.getElementById('r-meta').textContent = `📅 ${now.toLocaleDateString()} | 🔢 TDV-${now.getTime().toString(36).toUpperCase()}`;
             
-            // Загружаем фото
             loading.textContent = '📄 Step 2/4: Loading photos...';
             await loadImagesToReport();
             debugInfo.textContent += `\n✅ Photos loaded: ${uploadedImages.length}`;
             
-            // Показываем отчёт
             loading.textContent = '📄 Step 3/4: Showing report...';
             element.classList.add('visible');
             element.scrollIntoView({behavior: 'smooth', block: 'start'});
             
-            // Ждём рендеринга (больше времени для больших фото)
             await new Promise(resolve => setTimeout(resolve, 3000));
             
-            // Уведомление
             notice.style.display = 'block';
             for (let i = 3; i > 0; i--) {
                 document.getElementById('countdown').textContent = i;
@@ -291,25 +300,23 @@
             }
             notice.style.display = 'none';
             
-            // Генерация PDF
             loading.textContent = '📄 Step 4/4: Creating PDF...';
             debugInfo.textContent += `\n📊 Report size: ${element.offsetWidth}x${element.offsetHeight}px`;
             
-            // html2canvas с максимальным качеством
-            const canvas = await html2canvas(element, {
-                scale: 3,  // Максимальное качество
+            const canvas = await window.html2canvas(element, {
+                scale: 3,
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 logging: false,
                 windowWidth: element.offsetWidth,
-                imageTimeout: 60000  // 60 секунд на загрузку фото
+                imageTimeout: 60000
             });
             
             debugInfo.textContent += `\n📐 Canvas: ${canvas.width}x${canvas.height}`;
             
-            // Конвертируем в PDF с максимальным качеством
-            const imgData = canvas.toDataURL('image/jpeg', 1.0);  // Максимальное качество JPEG
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -317,7 +324,6 @@
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             pdf.save('car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf');
             
-            // Успех
             element.classList.remove('visible');
             loading.style.display = 'none';
             btn.disabled = false;
