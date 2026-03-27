@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>车辆信息报告</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         * { box-sizing: border-box; }
@@ -40,7 +41,6 @@
         .hint { font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .debug-info { font-size: 11px; color: #95a5a6; margin-top: 5px; text-align: center; white-space: pre-line; }
         
-        /* Отчёт для скриншота */
         #report-content { 
             display: none; background: white; padding: 30px; margin: 20px 0;
             border: 3px solid #3498db; border-radius: 8px;
@@ -112,7 +112,7 @@
             <div class="file-input-btn">📷 选择照片</div>
             <input type="file" id="photos" multiple accept="image/*" onchange="handleFiles(this.files)">
         </div>
-        <div class="hint">📸 3-5 张照片 | 3-5 photos recommended</div>
+        <div class="hint">📸 3-5 张照片 | БЕЗ сжатия | Original quality</div>
         <div id="image-preview"></div>
         <div class="debug-info" id="debug-info"></div>
     </div>
@@ -164,6 +164,7 @@
 <script>
     let uploadedImages = [];
 
+    // === БЕЗ СЖАТИЯ — оригинальное качество ===
     async function handleFiles(files) {
         const preview = document.getElementById('image-preview');
         const debugInfo = document.getElementById('debug-info');
@@ -172,14 +173,18 @@
         debugInfo.textContent = '';
         
         if (!files || files.length === 0) return;
-        if (files.length > 5) { alert('最多 5 张照片 | Max 5 photos'); return; }
+        if (files.length > 5) { 
+            alert('最多 5 张照片 | Max 5 photos'); 
+            return; 
+        }
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (!file.type.startsWith('image/')) continue;
             
             try {
-                const base64 = await compressFile(file, 1600, 0.9);
+                // Читаем файл БЕЗ сжатия
+                const base64 = await readFileAsBase64(file);
                 uploadedImages.push(base64);
                 
                 const img = document.createElement('img');
@@ -187,51 +192,30 @@
                 img.className = 'preview-img';
                 preview.appendChild(img);
                 
-                debugInfo.textContent += `✓ Photo ${i+1}: ${(base64.length * 0.75 / 1024).toFixed(0)} KB\n`;
+                const sizeKB = (base64.length * 0.75 / 1024).toFixed(0);
+                debugInfo.textContent += `✓ Photo ${i+1}: ${sizeKB} KB (original)\n`;
             } catch (err) {
                 console.error(err);
+                debugInfo.textContent += `✗ Photo ${i+1}: Error\n`;
             }
         }
         
         const totalSize = uploadedImages.reduce((acc, img) => acc + (img.length * 0.75), 0);
-        debugInfo.textContent += `\n📦 Total: ${(totalSize/1024/1024).toFixed(2)} MB | Photos: ${uploadedImages.length}`;
+        const totalMB = (totalSize / 1024 / 1024).toFixed(2);
+        debugInfo.textContent += `\n📦 Total: ${totalMB} MB | Photos: ${uploadedImages.length}\n⚠️ Original quality - large file size!`;
     }
 
-    function compressFile(file, maxSize = 1600, quality = 0.9) {
+    // Чтение файла без сжатия
+    function readFileAsBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    let width = img.width;
-                    let height = img.height;
-                    
-                    if (width > height && width > maxSize) {
-                        height = Math.round((height * maxSize) / width);
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = Math.round((width * maxSize) / height);
-                        height = maxSize;
-                    }
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, width, height);
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    resolve(canvas.toDataURL('image/jpeg', quality));
-                };
-                img.onerror = () => reject(new Error('Failed'));
-                img.src = e.target.result;
-            };
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('Failed to read'));
             reader.readAsDataURL(file);
         });
     }
 
+    // Загрузка фото в отчёт
     async function loadImagesToReport() {
         const target = document.getElementById('r-images');
         target.innerHTML = '';
@@ -240,7 +224,6 @@
             const img = document.createElement('img');
             img.src = src;
             
-            // Ждём загрузки
             await new Promise(resolve => {
                 img.onload = resolve;
                 img.onerror = resolve;
@@ -250,8 +233,8 @@
         }
     }
 
+    // Генерация PDF
     async function generatePDF() {
-        // Валидация
         const required = ['model', 'year', 'horsepower', 'mileage', 'price'];
         for (let id of required) {
             if (!document.getElementById(id).value.trim()) {
@@ -297,8 +280,8 @@
             element.classList.add('visible');
             element.scrollIntoView({behavior: 'smooth', block: 'start'});
             
-            // Ждём рендеринга
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Ждём рендеринга (больше времени для больших фото)
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             // Уведомление
             notice.style.display = 'block';
@@ -312,35 +295,34 @@
             loading.textContent = '📄 Step 4/4: Creating PDF...';
             debugInfo.textContent += `\n📊 Report size: ${element.offsetWidth}x${element.offsetHeight}px`;
             
-            const { jsPDF } = window.jspdf;
-            
-            // Создаём canvas из отчёта
+            // html2canvas с максимальным качеством
             const canvas = await html2canvas(element, {
-                scale: 2,
+                scale: 3,  // Максимальное качество
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 logging: false,
-                windowWidth: element.offsetWidth
+                windowWidth: element.offsetWidth,
+                imageTimeout: 60000  // 60 секунд на загрузку фото
             });
             
             debugInfo.textContent += `\n📐 Canvas: ${canvas.width}x${canvas.height}`;
             
-            // Конвертируем canvas в PDF
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            // Конвертируем в PDF с максимальным качеством
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);  // Максимальное качество JPEG
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
             
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             pdf.save('car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf');
             
             // Успех
             element.classList.remove('visible');
             loading.style.display = 'none';
             btn.disabled = false;
-            debugInfo.textContent += '\n✅ PDF created!';
-            alert('✅ PDF готов! | Ready!');
+            debugInfo.textContent += `\n✅ PDF created! Quality: MAX`;
+            alert('✅ PDF готов! | Original quality photos!');
             
         } catch (err) {
             console.error('Error:', err);
@@ -353,9 +335,6 @@
         }
     }
 </script>
-
-<!-- Добавляем html2canvas -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </body>
 </html>
