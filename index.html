@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Настройки для мобильных веб-приложений -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#3498db">
     
     <title>车辆信息报告 | Авто отчёт</title>
-    
-    <!-- Библиотека для генерации PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
@@ -40,9 +37,19 @@
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
         
-        .preview-img { 
-            width: 80px; height: 80px; object-fit: cover; margin: 4px; 
-            border: 2px solid #eee; border-radius: 6px; background: #f9f9f9;
+        /* Стили для превью фото */
+        #image-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; background: #fafafa; padding: 8px; border-radius: 6px; border: 1px dashed #ddd; }
+        .preview-img { width: 80px; height: 80px; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Кнопка загрузки */
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-btn {
+            display: block; width: 100%; padding: 12px; background: #ecf0f1; color: #2c3e50; 
+            text-align: center; border-radius: 6px; font-weight: 600; cursor: pointer; border: 2px dashed #bdc3c7;
+        }
+        .file-input-btn:hover { background: #e0e6e7; }
+        #photos { 
+            position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; 
         }
         
         button { 
@@ -59,16 +66,12 @@
             background: #e8f4fd; border-radius: 8px; margin-top: 15px; font-weight: 500;
         }
         .hint { font-size: 12px; color: #7f8c8d; margin-top: 5px; line-height: 1.4; }
-        .progress-bar { 
-            font-size: 13px; color: #3498db; padding: 8px; background: #f0f9ff; 
-            border-radius: 6px; margin-top: 8px; display: flex; align-items: center; gap: 8px;
-        }
+        .error-msg { color: #e74c3c; font-size: 13px; margin-top: 8px; background: #fdedec; padding: 8px; border-radius: 4px; display: none; }
+        .progress-text { font-size: 13px; color: #27ae60; font-weight: 600; margin-top: 8px; text-align: center; }
         
         /* === Стили для отчёта (PDF) === */
         #report-content { display: none; background: white; padding: 25px; font-family: sans-serif; }
-        .report-header { 
-            text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; 
-        }
+        .report-header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; }
         .report-header h1 { margin: 8px 0; color: #2c3e50; font-size: 22px; }
         .report-title-cn { font-size: 16px; color: #2c3e50; margin: 0; font-weight: bold; }
         .report-title-ru { font-size: 13px; color: #7f8c8d; margin: 4px 0 0 0; }
@@ -78,9 +81,7 @@
         .specs-table tr { border-bottom: 1px solid #eee; }
         .specs-table tr:last-child { border-bottom: none; }
         .specs-table td { padding: 10px 8px; vertical-align: top; }
-        .specs-label { 
-            width: 45%; font-weight: 600; color: #2c3e50; border-right: 2px solid #f1f1f1; 
-        }
+        .specs-label { width: 45%; font-weight: 600; color: #2c3e50; border-right: 2px solid #f1f1f1; }
         .specs-label-cn { display: block; font-size: 14px; }
         .specs-label-ru { display: block; font-size: 11px; color: #7f8c8d; margin-top: 2px; text-transform: uppercase; }
         .specs-value { width: 55%; padding-left: 12px; color: #333; font-size: 14px; }
@@ -90,18 +91,11 @@
         #r-images { display: flex; flex-wrap: wrap; margin: 15px 0; gap: 8px; }
         #r-images img { width: 30%; height: auto; border: 1px solid #eee; border-radius: 4px; }
         
-        .report-desc { 
-            margin: 15px 0; padding: 12px; background: #f8f9fa; 
-            border-left: 3px solid #3498db; border-radius: 0 4px 4px 0; 
-            font-size: 14px; white-space: pre-wrap; line-height: 1.6;
-        }
+        .report-desc { margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; border-radius: 0 4px 4px 0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
         .desc-label { font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block; }
         .desc-label-ru { font-weight: normal; color: #7f8c8d; font-size: 12px; }
         
-        .report-footer { 
-            margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; 
-            text-align: center; color: #95a5a6; font-size: 11px; line-height: 1.6;
-        }
+        .report-footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; color: #95a5a6; font-size: 11px; line-height: 1.6; }
         
         @media (max-width: 500px) {
             .row { flex-direction: column; gap: 0; }
@@ -120,7 +114,6 @@
         <small>Форма для заполнения данных об автомобиле</small>
     </h2>
     
-    <!-- === ФОРМА === -->
     <div class="form-group">
         <label>
             <span class="label-cn">品牌/型号</span>
@@ -173,7 +166,7 @@
             <span class="label-cn">配置 / 车辆描述</span>
             <span class="label-ru">| Комплектация / Описание</span>
         </label>
-        <textarea id="desc" placeholder="例如：全景天窗，真皮座椅，360影像，无事故..."></textarea>
+        <textarea id="desc" placeholder="例如：全景天窗，真皮座椅，360 影像，无事故..."></textarea>
         <div class="hint">💡 请详细描述配置、车况 | Опишите комплектацию и состояние</div>
     </div>
 
@@ -183,13 +176,19 @@
             <span class="label-ru">| Фото автомобиля</span>
             <span class="required">*</span>
         </label>
-        <!-- Добавлен inputmode и конкретные типы файлов для лучшей совместимости -->
-        <input type="file" id="photos" multiple accept="image/jpeg,image/jpg,image/png,image/heic,image/webp" onchange="previewImages()">
-        <div class="hint">📸 建议 5-7 张：外观、内饰、仪表盘、发动机、VIN | Рекомендуем 5-7 фото</div>
-        <div id="image-preview" style="margin-top: 10px;"></div>
-        <div id="progress-container" class="progress-bar" style="display:none;">
-            <span>🔄</span> <span id="progress-text">Обработка 0/0...</span>
+        
+        <!-- Кастомная кнопка загрузки -->
+        <div class="file-input-wrapper">
+            <div class="file-input-btn">📷 选择照片 | Выбрать фото</div>
+            <!-- Убрал capture, оставил только image/* для максимальной совместимости -->
+            <input type="file" id="photos" multiple accept="image/*" onchange="handleFiles(this.files)">
         </div>
+        
+        <div class="hint">📸 建议 5-7 张 | Рекомендуем 5-7 фото<br>⚠️ iPhone: если не грузит, зайдите в Настройки > Камера > Форматы > «Совместимые»</div>
+        
+        <div id="image-preview"></div>
+        <div id="progress-text" class="progress-text"></div>
+        <div id="error-box" class="error-msg"></div>
     </div>
 
     <div class="form-group">
@@ -218,67 +217,34 @@
 
     <table class="specs-table">
         <tr>
-            <td class="specs-label">
-                <span class="specs-label-cn">年份</span>
-                <span class="specs-label-ru">Год выпуска</span>
-            </td>
-            <td class="specs-value">
-                <span class="specs-value-cn" id="r-year"></span>
-            </td>
+            <td class="specs-label"><span class="specs-label-cn">年份</span><span class="specs-label-ru">Год выпуска</span></td>
+            <td class="specs-value"><span class="specs-value-cn" id="r-year"></span></td>
         </tr>
         <tr>
-            <td class="specs-label">
-                <span class="specs-label-cn">马力</span>
-                <span class="specs-label-ru">Лошадиные силы</span>
-            </td>
-            <td class="specs-value">
-                <span class="specs-value-cn" id="r-horsepower"></span>
-            </td>
+            <td class="specs-label"><span class="specs-label-cn">马力</span><span class="specs-label-ru">Лошадиные силы</span></td>
+            <td class="specs-value"><span class="specs-value-cn" id="r-horsepower"></span></td>
         </tr>
         <tr>
-            <td class="specs-label">
-                <span class="specs-label-cn">里程</span>
-                <span class="specs-label-ru">Пробег</span>
-            </td>
-            <td class="specs-value">
-                <span class="specs-value-cn" id="r-mileage"></span>
-                <span class="specs-value-ru">км</span>
-            </td>
+            <td class="specs-label"><span class="specs-label-cn">里程</span><span class="specs-label-ru">Пробег</span></td>
+            <td class="specs-value"><span class="specs-value-cn" id="r-mileage"></span><span class="specs-value-ru">км</span></td>
         </tr>
         <tr>
-            <td class="specs-label">
-                <span class="specs-label-cn">价格</span>
-                <span class="specs-label-ru">Цена</span>
-            </td>
-            <td class="specs-value">
-                <span class="specs-value-cn" id="r-price"></span>
-                <span class="specs-value-ru">юаней (CNY)</span>
-            </td>
+            <td class="specs-label"><span class="specs-label-cn">价格</span><span class="specs-label-ru">Цена</span></td>
+            <td class="specs-value"><span class="specs-value-cn" id="r-price"></span><span class="specs-value-ru">юаней (CNY)</span></td>
         </tr>
         <tr>
-            <td class="specs-label">
-                <span class="specs-label-cn">联系方式</span>
-                <span class="specs-label-ru">Контакты продавца</span>
-            </td>
-            <td class="specs-value">
-                <span class="specs-value-cn" id="r-contact"></span>
-            </td>
+            <td class="specs-label"><span class="specs-label-cn">联系方式</span><span class="specs-label-ru">Контакты продавца</span></td>
+            <td class="specs-value"><span class="specs-value-cn" id="r-contact"></span></td>
         </tr>
     </table>
 
     <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label">
-            <span class="specs-label-cn">配置描述</span>
-            <span class="specs-label-ru">Описание / Комплектация</span>
-        </span>
+        <span class="desc-label"><span class="specs-label-cn">配置描述</span><span class="specs-label-ru">Описание / Комплектация</span></span>
     </div>
     <div class="report-desc" id="r-desc"></div>
 
     <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label">
-            <span class="specs-label-cn">车辆照片</span>
-            <span class="specs-label-ru">Фотографии автомобиля</span>
-        </span>
+        <span class="desc-label"><span class="specs-label-cn">车辆照片</span><span class="specs-label-ru">Фотографии автомобиля</span></span>
     </div>
     <div id="r-images"></div>
 
@@ -289,151 +255,104 @@
 </div>
 
 <script>
-    // === 1. УМНОЕ СЖАТИЕ (Безопасное для мобильных) ===
-    function compressImage(file, maxWidth = 1280, quality = 0.8) {
-        return new Promise((resolve, reject) => {
-            // Если файл маленький (<1MB) — не сжимаем, экономим ресурсы
-            if (file.size < 1 * 1024 * 1024) {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-                return;
-            }
+    let uploadedImages = []; // Храним base64 строки здесь
 
-            const img = new Image();
-            // Используем createObjectURL для эффективной работы с памятью
-            const objectUrl = URL.createObjectURL(file);
-            
-            img.onload = () => {
-                // Освобождаем память сразу после загрузки изображения в память
-                URL.revokeObjectURL(objectUrl); 
-                
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                
-                // Определяем, мобильное ли устройство
-                const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-                // Для мобильных ставим более строгие лимиты
-                const safeMaxWidth = isMobile ? 1280 : 1600;
-                const safeMaxHeight = isMobile ? 1280 : 1200;
-                
-                // Пропорциональное уменьшение
-                if (width > safeMaxWidth || height > safeMaxHeight) {
-                    const ratio = Math.min(safeMaxWidth / width, safeMaxHeight / height);
-                    width = Math.round(width * ratio);
-                    height = Math.round(height * ratio);
-                }
-                
-                // Жёсткая защита от переполнения памяти canvas (макс ~4 млн пикселей)
-                if (width * height > 4 * 1024 * 1024) {
-                    const scale = 0.7;
-                    width = Math.round(width * scale);
-                    height = Math.round(height * scale);
-                }
-                
-                canvas.width = width;
-                canvas.height = height;
-                
-                try {
-                    const ctx = canvas.getContext('2d');
-                    // Включаем сглаживание для лучшего качества при уменьшении
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    const result = canvas.toDataURL('image/jpeg', quality);
-                    resolve(result);
-                } catch (e) {
-                    console.warn('Canvas сжатие не удалось, используем оригинал:', e);
-                    // Фоллбэк: читаем оригинал без сжатия
-                    const reader = new FileReader();
-                    reader.onload = ev => resolve(ev.target.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                }
-            };
-            
-            img.onerror = () => {
-                URL.revokeObjectURL(objectUrl);
-                reject(new Error('Не удалось загрузить изображение'));
-            };
-            
-            img.src = objectUrl;
-        });
-    }
-
-    // === 2. ПРЕДПРОСМОТР С ПРОГРЕССОМ ===
-    async function previewImages() {
+    // === 1. ОБРАБОТКА ФАЙЛОВ (С диагностикой) ===
+    async function handleFiles(files) {
         const preview = document.getElementById('image-preview');
-        const progressContainer = document.getElementById('progress-container');
         const progressText = document.getElementById('progress-text');
-        const files = document.getElementById('photos').files;
+        const errorBox = document.getElementById('error-box');
         
         // Сброс
-        preview.innerHTML = '';
-        if (files.length === 0) {
-            progressContainer.style.display = 'none';
+        errorBox.style.display = 'none';
+        errorBox.textContent = '';
+        uploadedImages = []; // Очищаем массив
+        
+        if (!files || files.length === 0) {
+            preview.innerHTML = '<div style="color:#999;font-size:13px;padding:10px;">Фото не выбраны</div>';
             return;
         }
         
         if (files.length > 7) {
-            alert('⚠️ 最多 7 张照片 | Максимум 7 фото');
+            showError('⚠️ 最多 7 张照片 | Максимум 7 фото');
             document.getElementById('photos').value = '';
-            progressContainer.style.display = 'none';
             return;
         }
         
-        // Показываем прогресс
-        progressContainer.style.display = 'flex';
-        progressText.textContent = `Обработка 0/${files.length}...`;
+        preview.innerHTML = '';
+        progressText.textContent = `🔄 Обработка 0/${files.length}...`;
         
         for (let i = 0; i < files.length; i++) {
-            progressText.textContent = `Обработка ${i+1}/${files.length}...`;
+            const file = files[i];
+            progressText.textContent = `🔄 Обработка ${i+1}/${files.length}...`;
+            
+            // Проверка типа файла
+            if (!file.type.startsWith('image/')) {
+                showError(`❌ Файл ${file.name} не является изображением`);
+                continue;
+            }
+            
+            // Проверка размера (макс 10МБ на файл)
+            if (file.size > 10 * 1024 * 1024) {
+                showError(`⚠️ Фото ${i+1} слишком большое (${(file.size/1024/1024).toFixed(1)} МБ). Попробуйте сделать скриншот или сжать его.`);
+                // Не прерываем, пытаемся загрузить дальше
+            }
             
             try {
-                // Таймаут на сжатие (15 сек) — защита от вечной загрузки
-                const compressed = await Promise.race([
-                    compressImage(files[i]),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('timeout')), 15000)
-                    )
-                ]);
+                const base64 = await readFileAsBase64(file);
+                uploadedImages.push(base64);
                 
+                // Показываем превью
                 const img = document.createElement('img');
-                img.src = compressed;
+                img.src = base64;
                 img.className = 'preview-img';
                 preview.appendChild(img);
                 
-            } catch (error) {
-                console.error(`Ошибка фото ${i+1}:`, error);
-                // Последняя попытка: загрузить оригинал без обработки
-                try {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        img.className = 'preview-img';
-                        img.style.opacity = '0.8'; // Визуально помечаем
-                        img.title = 'Оригинал (без сжатия)';
-                        preview.appendChild(img);
-                    };
-                    reader.readAsDataURL(files[i]);
-                } catch (e) {
-                    // Если совсем ничего не вышло
-                    preview.innerHTML += `<div style="color:#e74c3c;font-size:11px;padding:5px;">❌ Фото ${i+1}</div>`;
-                }
+            } catch (err) {
+                console.error('Ошибка загрузки:', err);
+                showError(`❌ Ошибка фото ${i+1}: ${err.message}. Попробуйте другое фото.`);
             }
         }
         
-        // Скрываем прогресс через небольшую задержку
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-        }, 1000);
+        progressText.textContent = `✅ Загружено фото: ${uploadedImages.length}`;
+        if (uploadedImages.length === 0) {
+            preview.innerHTML = '<div style="color:#e74c3c;font-size:13px;padding:10px;">Не удалось загрузить ни одного фото</div>';
+        }
     }
 
-    // === 3. ГЕНЕРАЦИЯ PDF ===
+    // Чтение файла в Base64 с проверкой
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            // Таймаут безопасности (20 сек)
+            const timeout = setTimeout(() => {
+                reader.abort();
+                reject(new Error('Превышено время чтения файла'));
+            }, 20000);
+            
+            reader.onload = () => {
+                clearTimeout(timeout);
+                resolve(reader.result);
+            };
+            
+            reader.onerror = () => {
+                clearTimeout(timeout);
+                reject(new Error('Не удалось прочитать файл'));
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function showError(msg) {
+        const errorBox = document.getElementById('error-box');
+        errorBox.textContent = msg;
+        errorBox.style.display = 'block';
+        console.error(msg);
+    }
+
+    // === 2. ГЕНЕРАЦИЯ PDF ===
     function generatePDF() {
         // Валидация
         const required = [
@@ -451,10 +370,9 @@
                 return;
             }
         }
-        const images = document.getElementById('image-preview').getElementsByTagName('img');
-        if (images.length < 3) {
+        
+        if (uploadedImages.length < 3) {
             alert('⚠️ 请上传至少 3 张照片 | Минимум 3 фото');
-            // Скролл к фото
             document.getElementById('photos').scrollIntoView({behavior: 'smooth', block: 'center'});
             return;
         }
@@ -472,17 +390,17 @@
         document.getElementById('r-date').innerText = now.toLocaleDateString('ru-RU');
         document.getElementById('r-id').innerText = 'TDV-' + now.getTime().toString(36).toUpperCase();
         
-        // Фото в отчёт
+        // Вставляем фото из массива
         const target = document.getElementById('r-images');
         target.innerHTML = '';
-        for (let img of images) {
-            const newImg = img.cloneNode();
-            newImg.style.width = '30%';
-            newImg.style.margin = '0';
-            target.appendChild(newImg);
+        for (let src of uploadedImages) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.style.width = '30%';
+            target.appendChild(img);
         }
 
-        // UI состояния
+        // UI
         const btn = document.getElementById('btn-generate');
         const loading = document.getElementById('loading');
         const element = document.getElementById('report-content');
@@ -508,7 +426,7 @@
             alert('✅ PDF готов!\nФайл скачан.\nОтправьте его нам. Спасибо!');
         }).catch(err => {
             console.error(err);
-            alert('❌ Ошибка генерации. Попробуйте ещё раз.');
+            alert('❌ Ошибка генерации PDF: ' + err.message);
             element.style.display = 'none';
             loading.style.display = 'none';
             btn.disabled = false;
