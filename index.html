@@ -3,318 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#3498db">
-    
-    <title>车辆信息报告 | Авто отчёт</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <title>车辆信息报告</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, 
-                         "Microsoft YaHei", "PingFang SC", sans-serif; 
-            padding: 15px; background: #f5f5f5; color: #333; line-height: 1.5; margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Microsoft YaHei", sans-serif; 
+            padding: 15px; background: #f5f5f5; color: #333; margin: 0;
         }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h2 { text-align: center; color: #2c3e50; margin: 0 0 25px 0; font-size: 20px; }
-        h2 small { display: block; font-size: 13px; color: #7f8c8d; font-weight: normal; margin-top: 6px; }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
+        h2 { text-align: center; color: #2c3e50; margin: 0 0 25px 0; }
         
         .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #2c3e50; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .label-cn { color: #2c3e50; }
         .label-ru { color: #7f8c8d; font-weight: normal; font-size: 13px; margin-left: 6px; }
-        .required { color: #e74c3c; margin-left: 3px; }
+        .required { color: #e74c3c; }
         
-        input, textarea, select { 
-            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; 
-            font-size: 16px; transition: border-color 0.2s; background: #fff;
-        }
-        input:focus, textarea:focus, select:focus { border-color: #3498db; outline: none; background: #fdfeff; }
-        textarea { resize: vertical; min-height: 80px; }
-        
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        textarea { min-height: 80px; resize: vertical; }
         .row { display: flex; gap: 12px; }
         .row .form-group { flex: 1; }
         
         #image-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; background: #fafafa; padding: 8px; border-radius: 6px; border: 1px dashed #ddd; }
-        .preview-img { width: 80px; height: 80px; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
         
-        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
-        .file-input-btn {
-            display: block; width: 100%; padding: 12px; background: #ecf0f1; color: #2c3e50; 
-            text-align: center; border-radius: 6px; font-weight: 600; cursor: pointer; border: 2px dashed #bdc3c7;
-        }
-        .file-input-btn:hover { background: #e0e6e7; }
-        #photos { 
-            position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; 
-        }
+        .file-input-wrapper { position: relative; width: 100%; }
+        .file-input-btn { display: block; padding: 12px; background: #ecf0f1; text-align: center; border-radius: 6px; cursor: pointer; border: 2px dashed #bdc3c7; }
+        #photos { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
         
-        button { 
-            width: 100%; padding: 15px; background: #3498db; color: white; border: none; 
-            border-radius: 8px; font-size: 17px; font-weight: 600; cursor: pointer; 
-            transition: background 0.2s; margin-top: 15px; -webkit-appearance: none;
-        }
-        button:hover { background: #2980b9; }
-        button:active { transform: scale(0.98); }
-        button:disabled { background: #95a5a6; cursor: not-allowed; transform: none; }
+        button { width: 100%; padding: 15px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 15px; }
+        button:disabled { background: #95a5a6; }
         
-        #loading { 
-            display: none; text-align: center; padding: 15px; color: #2c3e50; 
-            background: #e8f4fd; border-radius: 8px; margin-top: 15px; font-weight: 500;
-        }
-        .hint { font-size: 12px; color: #7f8c8d; margin-top: 5px; line-height: 1.4; }
-        .error-msg { color: #e74c3c; font-size: 13px; margin-top: 8px; background: #fdedec; padding: 8px; border-radius: 4px; display: none; }
-        .progress-text { font-size: 13px; color: #27ae60; font-weight: 600; margin-top: 8px; text-align: center; }
+        #loading { display: none; text-align: center; padding: 15px; background: #e8f4fd; border-radius: 8px; margin-top: 15px; }
+        .hint { font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .debug-info { font-size: 11px; color: #95a5a6; margin-top: 5px; text-align: center; white-space: pre-line; }
         
-        /* === ОТЧЁТ === */
+        /* Отчёт для скриншота */
         #report-content { 
-            display: none; background: white; padding: 25px; 
-            width: 100%; max-width: 800px; margin: 20px auto;
+            display: none; background: white; padding: 30px; margin: 20px 0;
             border: 3px solid #3498db; border-radius: 8px;
         }
         #report-content.visible { display: block; }
         
         .report-header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; }
-        .report-header h1 { margin: 8px 0; color: #2c3e50; font-size: 22px; }
-        .report-title-cn { font-size: 16px; color: #2c3e50; margin: 0; font-weight: bold; }
-        .report-title-ru { font-size: 13px; color: #7f8c8d; margin: 4px 0 0 0; }
-        .report-header .meta { color: #7f8c8d; font-size: 12px; margin-top: 8px; }
+        .report-title { font-size: 24px; color: #2c3e50; margin: 0; font-weight: bold; }
+        .report-subtitle { font-size: 14px; color: #7f8c8d; margin: 5px 0; }
         
-        .specs-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
-        .specs-table tr { border-bottom: 1px solid #eee; }
-        .specs-table tr:last-child { border-bottom: none; }
-        .specs-table td { padding: 10px 8px; vertical-align: top; }
-        .specs-label { width: 45%; font-weight: 600; color: #2c3e50; border-right: 2px solid #f1f1f1; }
-        .specs-label-cn { display: block; font-size: 14px; }
-        .specs-label-ru { display: block; font-size: 11px; color: #7f8c8d; margin-top: 2px; text-transform: uppercase; }
-        .specs-value { width: 55%; padding-left: 12px; color: #333; font-size: 14px; }
-        .specs-value-cn { font-weight: 500; display: block; }
-        .specs-value-ru { font-size: 11px; color: #7f8c8d; display: block; margin-top: 2px; }
+        .info-table { width: 100%; margin: 20px 0; border-collapse: collapse; }
+        .info-table tr { border-bottom: 1px solid #eee; }
+        .info-table td { padding: 12px 8px; }
+        .info-label { font-weight: 600; color: #2c3e50; width: 40%; }
+        .info-value { color: #333; width: 60%; }
         
-        #r-images { display: flex; flex-wrap: wrap; margin: 15px 0; gap: 8px; justify-content: center; }
-        #r-images img { 
-            width: 30%; 
-            height: auto; 
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
-            display: block; 
-            background: #fff;
-            object-fit: cover;
-        }
+        .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .photos-grid img { width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; }
         
-        .report-desc { margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; border-radius: 0 4px 4px 0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
-        .desc-label { font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block; }
-        .desc-label-ru { font-weight: normal; color: #7f8c8d; font-size: 12px; }
-        
-        .report-footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; color: #95a5a6; font-size: 11px; line-height: 1.6; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; color: #95a5a6; font-size: 12px; }
         
         #report-notice {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(44, 62, 80, 0.95);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            z-index: 1000;
-            text-align: center;
-            max-width: 90%;
-        }
-        
-        @media (max-width: 500px) {
-            .row { flex-direction: column; gap: 0; }
-            #r-images img { width: 48%; }
-            body { padding: 10px; }
-            .specs-label, .specs-value { width: 100%; border-right: none !important; }
-            .specs-value { padding-left: 0; padding-top: 5px; border-top: 1px dashed #eee; }
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: rgba(44, 62, 80, 0.95);
+            color: white; padding: 25px; border-radius: 12px; z-index: 1000; text-align: center;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>
-        🚗 车辆信息登记表
-        <small>Форма для заполнения данных об автомобиле</small>
-    </h2>
+    <h2>🚗 车辆信息登记表<br><small style="font-size:14px;color:#7f8c8d;font-weight:normal">Форма для заполнения</small></h2>
     
     <div class="form-group">
-        <label>
-            <span class="label-cn">品牌/型号</span>
-            <span class="label-ru">| Марка / Модель</span>
-            <span class="required">*</span>
-        </label>
-        <input type="text" id="model" placeholder="例如：Toyota Camry 2.5G" autocomplete="off">
+        <label><span class="label-cn">品牌/型号</span><span class="label-ru">| Марка/Модель</span><span class="required">*</span></label>
+        <input type="text" id="model" placeholder="Toyota Camry">
     </div>
 
     <div class="row">
         <div class="form-group">
-            <label>
-                <span class="label-cn">上牌年份</span>
-                <span class="label-ru">| Год выпуска</span>
-                <span class="required">*</span>
-            </label>
-            <input type="number" id="year" placeholder="2020" min="1990" max="2026" inputmode="numeric">
+            <label><span class="label-cn">上牌年份</span><span class="label-ru">| Год</span><span class="required">*</span></label>
+            <input type="number" id="year" placeholder="2020">
         </div>
         <div class="form-group">
-            <label>
-                <span class="label-cn">马力</span>
-                <span class="label-ru">| Лошадиные силы</span>
-                <span class="required">*</span>
-            </label>
-            <input type="number" id="horsepower" placeholder="例如：203" inputmode="numeric">
+            <label><span class="label-cn">马力</span><span class="label-ru">| Л.с.</span><span class="required">*</span></label>
+            <input type="number" id="horsepower" placeholder="203">
         </div>
     </div>
 
     <div class="row">
         <div class="form-group">
-            <label>
-                <span class="label-cn">里程</span>
-                <span class="label-ru">| Пробег (км)</span>
-                <span class="required">*</span>
-            </label>
-            <input type="number" id="mileage" placeholder="例如：45000" inputmode="numeric">
+            <label><span class="label-cn">里程</span><span class="label-ru">| Пробег (км)</span><span class="required">*</span></label>
+            <input type="number" id="mileage" placeholder="45000">
         </div>
         <div class="form-group">
-            <label>
-                <span class="label-cn">价格</span>
-                <span class="label-ru">| Цена (CNY)</span>
-                <span class="required">*</span>
-            </label>
-            <input type="number" id="price" placeholder="例如：125000" inputmode="numeric">
+            <label><span class="label-cn">价格</span><span class="label-ru">| Цена (¥)</span><span class="required">*</span></label>
+            <input type="number" id="price" placeholder="125000">
         </div>
     </div>
 
     <div class="form-group">
-        <label>
-            <span class="label-cn">配置 / 车辆描述</span>
-            <span class="label-ru">| Комплектация / Описание</span>
-        </label>
-        <textarea id="desc" placeholder="例如：全景天窗，真皮座椅，360 影像，无事故..."></textarea>
-        <div class="hint">💡 请详细描述配置、车况 | Опишите комплектацию и состояние</div>
+        <label><span class="label-cn">配置描述</span><span class="label-ru">| Описание</span></label>
+        <textarea id="desc" placeholder="全景天窗，真皮座椅..."></textarea>
     </div>
 
     <div class="form-group">
-        <label>
-            <span class="label-cn">车辆照片</span>
-            <span class="label-ru">| Фото автомобиля</span>
-            <span class="required">*</span>
-        </label>
-        
+        <label><span class="label-cn">车辆照片</span><span class="label-ru">| Фото</span><span class="required">*</span></label>
         <div class="file-input-wrapper">
-            <div class="file-input-btn">📷 选择照片 | Выбрать фото</div>
+            <div class="file-input-btn">📷 选择照片</div>
             <input type="file" id="photos" multiple accept="image/*" onchange="handleFiles(this.files)">
         </div>
-        
-        <div class="hint">📸 建议 3-5 张 | Рекомендуем 3-5 фото<br>⚠️ iPhone: Настройки > Камера > Форматы > «Совместимые»</div>
-        
+        <div class="hint">📸 3-5 张照片 | 3-5 photos recommended</div>
         <div id="image-preview"></div>
-        <div id="progress-text" class="progress-text"></div>
-        <div id="debug-info" class="debug-info"></div>
-        <div id="error-box" class="error-msg"></div>
+        <div class="debug-info" id="debug-info"></div>
     </div>
 
-    <button onclick="generatePDF()" id="btn-generate">📄 生成 PDF 报告 | Скачать отчёт</button>
-    <div id="loading">⏳ 生成中... | Идёт генерация, подождите...</div>
+    <button onclick="generatePDF()" id="btn-generate">📄 生成 PDF 报告</button>
+    <div id="loading">⏳ 生成中...</div>
 </div>
 
-<!-- === ШАБЛОН ОТЧЕТА === -->
+<!-- ОТЧЁТ -->
 <div id="report-content">
     <div class="report-header">
-        <p class="report-title-cn">车辆信息报告</p>
-        <p class="report-title-ru">Отчёт по автомобилю</p>
-        <h1 id="r-model"></h1>
-        <div class="meta">
-            📅 <span id="r-date"></span> &nbsp;|&nbsp; 🔢 <span id="r-id"></span>
-        </div>
+        <div class="report-title">车辆信息报告</div>
+        <div class="report-subtitle">Vehicle Information Report</div>
+        <div style="margin-top:10px;font-size:12px;color:#7f8c8d" id="r-meta"></div>
     </div>
-
-    <table class="specs-table">
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">年份</span><span class="specs-label-ru">Год выпуска</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-year"></span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">马力</span><span class="specs-label-ru">Лошадиные силы</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-horsepower"></span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">里程</span><span class="specs-label-ru">Пробег</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-mileage"></span><span class="specs-value-ru">км</span></td>
-        </tr>
-        <tr>
-            <td class="specs-label"><span class="specs-label-cn">价格</span><span class="specs-label-ru">Цена</span></td>
-            <td class="specs-value"><span class="specs-value-cn" id="r-price"></span><span class="specs-value-ru">юаней (CNY)</span></td>
-        </tr>
+    
+    <div style="text-align:center;margin:20px 0">
+        <div style="font-size:28px;color:#2c3e50;font-weight:bold" id="r-model"></div>
+    </div>
+    
+    <table class="info-table">
+        <tr><td class="info-label">年份 / Year</td><td class="info-value" id="r-year"></td></tr>
+        <tr><td class="info-label">马力 / Horsepower</td><td class="info-value" id="r-horsepower"></td></tr>
+        <tr><td class="info-label">里程 / Mileage</td><td class="info-value" id="r-mileage"></td></tr>
+        <tr><td class="info-label">价格 / Price</td><td class="info-value" id="r-price"></td></tr>
     </table>
-
-    <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label"><span class="specs-label-cn">配置描述</span><span class="specs-label-ru">Описание / Комплектация</span></span>
+    
+    <div style="margin:20px 0">
+        <div style="font-weight:600;color:#2c3e50;margin-bottom:8px">配置描述 / Description:</div>
+        <div style="background:#f8f9fa;padding:12px;border-left:3px solid #3498db;border-radius:0 4px 4px 0" id="r-desc"></div>
     </div>
-    <div class="report-desc" id="r-desc"></div>
-
-    <div style="margin: 20px 0 10px 0;">
-        <span class="desc-label"><span class="specs-label-cn">车辆照片</span><span class="specs-label-ru">Фотографии автомобиля</span></span>
+    
+    <div style="margin:20px 0">
+        <div style="font-weight:600;color:#2c3e50;margin-bottom:10px">车辆照片 / Photos:</div>
+        <div class="photos-grid" id="r-images"></div>
     </div>
-    <div id="r-images"></div>
-
-    <div class="report-footer">
-        <p>报告由 «Турбо ДВ» 系统自动生成</p>
-        <p style="margin:3px 0">Отчёт сгенерирован автоматически | 🇷 Россия · Дальний Восток · Авто из Китая</p>
+    
+    <div class="footer">
+        <div>报告由 «Турбо ДВ» 系统自动生成</div>
+        <div style="margin-top:5px">Auto-generated report | 🇷 Russia - Far East</div>
     </div>
 </div>
 
 <div id="report-notice">
-    <h3 style="margin:0 0 10px 0;">📋 Отчёт показан на экране</h3>
-    <p style="margin:0 0 15px 0; font-size:14px;">Проверьте что все фото загрузились.<br>PDF скачается через 3 секунды...</p>
-    <div id="countdown" style="font-size:24px; font-weight:bold;">3</div>
+    <h3 style="margin:0 0 10px 0">📋 Проверьте отчёт</h3>
+    <p style="margin:0 0 15px 0">PDF скачается через <span id="countdown" style="font-size:28px;font-weight:bold">3</span> сек</p>
 </div>
 
 <script>
     let uploadedImages = [];
 
-    // === 1. ОБРАБОТКА ФАЙЛОВ (ВЫСОКОЕ КАЧЕСТВО) ===
     async function handleFiles(files) {
         const preview = document.getElementById('image-preview');
-        const progressText = document.getElementById('progress-text');
         const debugInfo = document.getElementById('debug-info');
-        const errorBox = document.getElementById('error-box');
-        
-        errorBox.style.display = 'none';
-        errorBox.textContent = '';
         uploadedImages = [];
-        
-        if (!files || files.length === 0) {
-            preview.innerHTML = '<div style="color:#999;font-size:13px;padding:10px;">Фото не выбраны</div>';
-            return;
-        }
-        
-        if (files.length > 5) {
-            showError('⚠️ 最多 5 张照片 | Максимум 5 фото');
-            document.getElementById('photos').value = '';
-            return;
-        }
-        
         preview.innerHTML = '';
-        progressText.textContent = `🔄 Обработка 0/${files.length}...`;
         debugInfo.textContent = '';
+        
+        if (!files || files.length === 0) return;
+        if (files.length > 5) { alert('最多 5 张照片 | Max 5 photos'); return; }
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            progressText.textContent = `🔄 Обработка ${i+1}/${files.length}...`;
-            
-            if (!file.type.startsWith('image/')) {
-                showError(`❌ Файл ${file.name} не является изображением`);
-                continue;
-            }
+            if (!file.type.startsWith('image/')) continue;
             
             try {
-                // УВЕЛИЧЕНО КАЧЕСТВО: maxSize 1600, quality 0.92
-                const base64 = await compressAndReadFile(file, 1600, 0.92);
+                const base64 = await compressFile(file, 1600, 0.9);
                 uploadedImages.push(base64);
                 
                 const img = document.createElement('img');
@@ -322,21 +187,17 @@
                 img.className = 'preview-img';
                 preview.appendChild(img);
                 
-                debugInfo.textContent += `✓ Фото ${i+1}: ${(base64.length * 0.75 / 1024).toFixed(0)} КБ\n`;
-                
+                debugInfo.textContent += `✓ Photo ${i+1}: ${(base64.length * 0.75 / 1024).toFixed(0)} KB\n`;
             } catch (err) {
-                console.error('Ошибка:', err);
-                showError(`❌ Ошибка фото ${i+1}: ${err.message}`);
+                console.error(err);
             }
         }
         
         const totalSize = uploadedImages.reduce((acc, img) => acc + (img.length * 0.75), 0);
-        progressText.textContent = `✅ Загружено: ${uploadedImages.length} фото`;
-        debugInfo.textContent += `\n📦 Всего: ${(totalSize/1024/1024).toFixed(2)} МБ (высокое качество)`;
+        debugInfo.textContent += `\n📦 Total: ${(totalSize/1024/1024).toFixed(2)} MB | Photos: ${uploadedImages.length}`;
     }
 
-    // Сжатие с высоким качеством
-    function compressAndReadFile(file, maxSize = 1600, quality = 0.92) {
+    function compressFile(file, maxSize = 1600, quality = 0.9) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -348,17 +209,12 @@
                     let width = img.width;
                     let height = img.height;
                     
-                    // Пропорциональное уменьшение только если больше maxSize
-                    if (width > height) {
-                        if (width > maxSize) {
-                            height = Math.round((height * maxSize) / width);
-                            width = maxSize;
-                        }
-                    } else {
-                        if (height > maxSize) {
-                            width = Math.round((width * maxSize) / height);
-                            height = maxSize;
-                        }
+                    if (width > height && width > maxSize) {
+                        height = Math.round((height * maxSize) / width);
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = Math.round((width * maxSize) / height);
+                        height = maxSize;
                     }
                     
                     canvas.width = width;
@@ -367,35 +223,25 @@
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // Высокое качество JPEG (0.92)
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
-                img.onerror = () => reject(new Error('Не удалось обработать'));
+                img.onerror = () => reject(new Error('Failed'));
                 img.src = e.target.result;
             };
-            reader.onerror = () => reject(new Error('Не удалось прочитать'));
             reader.readAsDataURL(file);
         });
     }
 
-    function showError(msg) {
-        const errorBox = document.getElementById('error-box');
-        errorBox.textContent = msg;
-        errorBox.style.display = 'block';
-    }
-
-    // === 2. ЗАГРУЗКА ФОТО ===
-    async function loadImagesToReport(images) {
+    async function loadImagesToReport() {
         const target = document.getElementById('r-images');
         target.innerHTML = '';
         
-        for (let i = 0; i < images.length; i++) {
+        for (let src of uploadedImages) {
             const img = document.createElement('img');
-            img.src = images[i];
-            img.style.width = '30%';
-            img.style.display = 'block';
+            img.src = src;
             
-            await new Promise((resolve) => {
+            // Ждём загрузки
+            await new Promise(resolve => {
                 img.onload = resolve;
                 img.onerror = resolve;
             });
@@ -404,25 +250,18 @@
         }
     }
 
-    // === 3. ГЕНЕРАЦИЯ PDF ===
     async function generatePDF() {
-        const required = [
-            {id: 'model', label: '品牌/型号 | Марка'},
-            {id: 'year', label: '年份 | Год'},
-            {id: 'horsepower', label: '马力 | Л.с.'},
-            {id: 'mileage', label: '里程 | Пробег'},
-            {id: 'price', label: '价格 | Цена'}
-        ];
-        for (let f of required) {
-            if (!document.getElementById(f.id).value.trim()) {
-                alert('⚠️ Заполните: ' + f.label);
-                document.getElementById(f.id).focus();
+        // Валидация
+        const required = ['model', 'year', 'horsepower', 'mileage', 'price'];
+        for (let id of required) {
+            if (!document.getElementById(id).value.trim()) {
+                alert('Fill in: ' + id);
                 return;
             }
         }
         
         if (uploadedImages.length < 3) {
-            alert('⚠️ 请上传至少 3 张照片 | Минимум 3 фото');
+            alert('请上传至少 3 张照片 | Min 3 photos');
             return;
         }
 
@@ -431,90 +270,92 @@
         const element = document.getElementById('report-content');
         const debugInfo = document.getElementById('debug-info');
         const notice = document.getElementById('report-notice');
-        const countdown = document.getElementById('countdown');
         
         btn.disabled = true;
         loading.style.display = 'block';
-        loading.textContent = '📄 Шаг 1/4: Подготовка данных...';
+        loading.textContent = '📄 Step 1/4: Preparing...';
         
         try {
-            // Заполняем данные
-            document.getElementById('r-model').innerText = document.getElementById('model').value;
-            document.getElementById('r-year').innerText = document.getElementById('year').value;
-            document.getElementById('r-horsepower').innerText = document.getElementById('horsepower').value + ' HP';
-            document.getElementById('r-mileage').innerText = document.getElementById('mileage').value;
-            document.getElementById('r-price').innerText = document.getElementById('price').value;
-            document.getElementById('r-desc').innerText = document.getElementById('desc').value || '—';
+            // Заполняем отчёт
+            document.getElementById('r-model').textContent = document.getElementById('model').value;
+            document.getElementById('r-year').textContent = document.getElementById('year').value;
+            document.getElementById('r-horsepower').textContent = document.getElementById('horsepower').value + ' HP';
+            document.getElementById('r-mileage').textContent = document.getElementById('mileage').value + ' km';
+            document.getElementById('r-price').textContent = document.getElementById('price').value + ' ¥';
+            document.getElementById('r-desc').textContent = document.getElementById('desc').value || '-';
             
             const now = new Date();
-            document.getElementById('r-date').innerText = now.toLocaleDateString('ru-RU');
-            document.getElementById('r-id').innerText = 'TDV-' + now.getTime().toString(36).toUpperCase();
+            document.getElementById('r-meta').textContent = `📅 ${now.toLocaleDateString()} | 🔢 TDV-${now.getTime().toString(36).toUpperCase()}`;
             
             // Загружаем фото
-            loading.textContent = '📄 Шаг 2/4: Загрузка фото...';
-            await loadImagesToReport(uploadedImages);
-            debugInfo.textContent += `\n✅ Фото загружено: ${uploadedImages.length}`;
+            loading.textContent = '📄 Step 2/4: Loading photos...';
+            await loadImagesToReport();
+            debugInfo.textContent += `\n✅ Photos loaded: ${uploadedImages.length}`;
             
             // Показываем отчёт
-            loading.textContent = '📄 Шаг 3/4: Показ отчёта...';
+            loading.textContent = '📄 Step 3/4: Showing report...';
             element.classList.add('visible');
             element.scrollIntoView({behavior: 'smooth', block: 'start'});
+            
+            // Ждём рендеринга
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Уведомление
             notice.style.display = 'block';
             for (let i = 3; i > 0; i--) {
-                countdown.textContent = i;
+                document.getElementById('countdown').textContent = i;
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             notice.style.display = 'none';
             
             // Генерация PDF
-            loading.textContent = '📄 Шаг 4/4: Генерация PDF...';
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            loading.textContent = '📄 Step 4/4: Creating PDF...';
+            debugInfo.textContent += `\n📊 Report size: ${element.offsetWidth}x${element.offsetHeight}px`;
             
-            debugInfo.textContent += `\n📊 Размер: ${element.offsetWidth}x${element.offsetHeight}px`;
+            const { jsPDF } = window.jspdf;
             
-            const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-            const opt = {
-                margin: 10,
-                filename: 'car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf',
-                image: { type: 'jpeg', quality: 0.98 }, // Высокое качество PDF
-                html2canvas: { 
-                    scale: isMobile ? 1.5 : 2, // Увеличил scale для мобильных
-                    useCORS: true,
-                    logging: false,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    windowWidth: 800,
-                    imageTimeout: 30000
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            // Создаём canvas из отчёта
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                windowWidth: element.offsetWidth
+            });
             
-            debugInfo.textContent += `\n🔧 Scale: ${opt.html2canvas.scale}, Quality: ${opt.image.quality}`;
+            debugInfo.textContent += `\n📐 Canvas: ${canvas.width}x${canvas.height}`;
             
-            await html2pdf().set(opt).from(element).save();
+            // Конвертируем canvas в PDF
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save('car_report_' + document.getElementById('model').value.trim().substring(0,10) + '.pdf');
             
             // Успех
             element.classList.remove('visible');
             loading.style.display = 'none';
             btn.disabled = false;
-            btn.innerText = '📄 生成 PDF 报告 | Скачать отчёт';
-            debugInfo.textContent += '\n✅ PDF создан!';
-            alert('✅ PDF готов!\nВысокое качество фото.\nОтправьте нам!');
+            debugInfo.textContent += '\n✅ PDF created!';
+            alert('✅ PDF готов! | Ready!');
             
         } catch (err) {
-            console.error('PDF Error:', err);
+            console.error('Error:', err);
             element.classList.remove('visible');
             notice.style.display = 'none';
             loading.style.display = 'none';
             btn.disabled = false;
-            btn.innerText = '📄 生成 PDF 报告 | Скачать отчёт';
             debugInfo.textContent += '\n❌ ' + err.message;
-            alert('❌ Ошибка: ' + err.message + '\n\nПопробуйте:\n1. Обновить страницу\n2. Меньше фото (3 шт)\n3. Браузер Chrome');
+            alert('❌ Error: ' + err.message);
         }
     }
 </script>
+
+<!-- Добавляем html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </body>
 </html>
